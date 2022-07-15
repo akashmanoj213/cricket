@@ -126,14 +126,20 @@ function addBall(request) {
     }
 
     if (innings.balls === match.ballsPerInning) {
-        const nextTeam = teamDb.find(team => team.id !== match.battingTeamId && team.matchId === matchId);
-        const batsmen = getBatsmen(nextTeam.id);
-        const bowler = getBowler(currentTeamId);
-        match.firstBatsmanId = batsmen[0].id;
-        match.secondBatsmanId = batsmen[1].id;
-        match.bowlerId = bowler.id;
-        match.battingTeamId = nextTeam.id;
-        match.target = innings.runs;
+        if (match.target) {
+            const teamIds = teamDb.filter(team => team.matchId === matchId).map(team => team.id);
+            const winningTeamId = inningsDb.filter(inning => teamIds.includes(inning.teamId)).reduce((prev, current) => prev.runs > current.runs ? prev.teamId : current.teamId);
+            match.winningTeamId = winningTeamId;
+        } else {
+            const nextTeam = teamDb.find(team => team.id !== match.battingTeamId && team.matchId === matchId);
+            const batsmen = getBatsmen(nextTeam.id);
+            const bowler = getBowler(currentTeamId);
+            match.firstBatsmanId = batsmen[0].id;
+            match.secondBatsmanId = batsmen[1].id;
+            match.bowlerId = bowler.id;
+            match.battingTeamId = nextTeam.id;
+            match.target = innings.runs;
+        }
     }
 }
 
@@ -159,9 +165,9 @@ function getLiveUpdate(matchId) {
 
     let secondInning = {};
     if (match.target) {
-        const runsLeft = match.target - innings.runs;
-        const runRate = runsLeft / (match.ballsPerInning - innings.balls);
-        const winner = match.winningTeamId ? teamDb.find(team => team.id === match.winningTeamId) : 'in-progress';
+        const runsLeft = (match.target - innings.runs) < 0 ? 0 : (match.target - innings.runs);
+        const runRate = runsLeft && runsLeft / (match.ballsPerInning - innings.balls);
+        const winner = match.winningTeamId ? teamDb.find(team => team.id === match.winningTeamId).name : 'in-progress';
         secondInning = {
             runsLeft,
             runRate,
